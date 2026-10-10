@@ -149,12 +149,6 @@ def get_backend(name: str) -> Callable:
         from backends import aistudio
 
         return aistudio.hear
-    if name == "gemini-cli":
-        try:
-            from backends import gemini_cli
-        except ImportError:
-            raise StageUnavailable("gemini-cli backend is not installed")
-        return gemini_cli.hear
     raise StageUnavailable(f"unknown LISTEN_BACKEND {name!r}")
 
 

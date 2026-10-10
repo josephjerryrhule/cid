@@ -21,7 +21,7 @@ CONFIG_DIR = Path(os.environ.get("LISTEN_CONFIG", Path.home() / ".config" / "lis
 ENV_FILE = CONFIG_DIR / ".env"
 READY_MARKER = HERE / ".venv" / ".listen-ready"
 ENV_TEMPLATE = """# /listen configuration (this file is private: chmod 600)
-# Hearing backend: aistudio (default) or gemini-cli
+# Hearing backend (only aistudio is supported)
 # LISTEN_BACKEND=aistudio
 # Free key: https://aistudio.google.com/apikey
 # GEMINI_API_KEY=

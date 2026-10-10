@@ -106,7 +106,7 @@ cid/ear/
     ingest.py stems.py rhythm.py structure.py mix.py
     speech.py hear.py see.py assemble.py classify.py
   backends/
-    aistudio.py gemini_cli.py
+    aistudio.py
   remotion/
     cues.ts            useCues, beatPulse, curve, momentAt
   SKILL.md
@@ -208,7 +208,6 @@ Selected by `LISTEN_BACKEND` in `~/.config/listen/.env`.
 | Backend | Auth | Status |
 |---|---|---|
 | `aistudio` | `GEMINI_API_KEY` from Google AI Studio, free tier by default | default |
-| `gemini-cli` | personal Google account login via Gemini CLI | experimental; kept only if a build-time spike proves it accepts audio files and returns structured output |
 | none (`--no-cloud`) | none | always available |
 
 Data note: on the free tier Google may use submitted content to improve its products and humans may review it. Unreleased client audio should go through a billing-enabled (paid) project or use `--no-cloud`. The skill states this the first time it uploads.
@@ -287,6 +286,11 @@ Pass bar: the success criteria in section 1.
 - Music identification (naming the song or artist).
 - Platforms other than macOS on Apple Silicon.
 
-## 11. Build-time spike
+## 11. Build-time spike: result
 
-Before committing to the `gemini-cli` backend: test whether Gemini CLI, logged in with a personal Google account, accepts an audio file and returns JSON matching the schema in 6.3. If yes, keep it as an option. If no, delete the backend and note it here.
+Tested 2026-10-10. Goal: use a personal Google account instead of an API key for hearing.
+
+- **Antigravity (agy):** not usable. Its file viewer turns audio into a text transcript before the model sees it. It returned the spoken words of a test clip but could not hear voice, tone or anything non-verbal, so it cannot describe music. Words are already covered locally by mlx-whisper.
+- **Gemini CLI:** not tested. Sign-in needs an interactive browser flow, and the AI Studio key already works. Skipped by decision.
+
+Result: `aistudio` is the only hearing backend. If the free tier gets tight, enable billing on the same key rather than adding a backend.
