@@ -38,14 +38,14 @@ MESSAGES = {
 
 
 def read_env() -> dict:
-    env = {}
+    """Shell exports first, then the config file on top (same precedence as core.config)."""
+    env = {k: v for k, v in os.environ.items() if k.startswith(("LISTEN_", "GEMINI_"))}
     if ENV_FILE.exists():
         for line in ENV_FILE.read_text().splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip().strip('"').strip("'")
-    env.update({k: v for k, v in os.environ.items() if k.startswith(("LISTEN_", "GEMINI_"))})
     return env
 
 

@@ -1,4 +1,8 @@
-"""Loads ~/.config/listen/.env into the environment without overriding real env vars."""
+"""Loads ~/.config/listen/.env into the environment.
+
+The file wins over variables already exported by the shell: /listen's own config is more
+specific than a global export (for example a GEMINI_API_KEY set for another tool).
+"""
 from __future__ import annotations
 
 import os
@@ -18,4 +22,4 @@ def load_env(path: Path | None = None) -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         k, v = line.split("=", 1)
-        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+        os.environ[k.strip()] = v.strip().strip('"').strip("'")

@@ -102,3 +102,15 @@ def test_write_is_atomic_and_handles_numpy(tmp_path):
     ctx.write("x", {"a": np.float32(1.5), "b": np.arange(3), "c": np.bool_(True)})
     assert ctx.read("x") == {"a": 1.5, "b": [0, 1, 2], "c": True}
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_listen_env_file_overrides_shell_env(tmp_path, monkeypatch):
+    from core import config
+
+    env = tmp_path / ".env"
+    env.write_text("# comment\nGEMINI_API_KEY=from-file\n")
+    monkeypatch.setenv("GEMINI_API_KEY", "from-shell")
+    config.load_env(env)
+    import os
+
+    assert os.environ["GEMINI_API_KEY"] == "from-file"
