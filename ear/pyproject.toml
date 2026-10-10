@@ -1,0 +1,37 @@
+[project]
+name = "listen"
+version = "0.1.0"
+description = "Give Claude an ear: measured audio analysis, sync cues and a hearing model."
+requires-python = "==3.12.*"
+dependencies = [
+  "numpy>=1.26,<2.3",
+  "scipy>=1.13",
+  "librosa>=0.11",
+  "soundfile>=0.12",
+  "soxr>=0.3",
+  "pyloudnorm==0.1.1",
+  "matplotlib>=3.9",
+  "torch==2.5.1",
+  "torchaudio==2.5.1",
+  "einops>=0.7",
+  "rotary-embedding-torch>=0.6",
+  "beat-this @ git+https://github.com/CPJKU/beat_this.git",
+  "mlx-whisper>=0.4",
+  "google-genai>=1.20",
+  "pydantic>=2.7",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+  "models: downloads and runs ML models (slow on first run)",
+  "live: calls the real hearing backend; needs LISTEN_LIVE=1",
+]
+addopts = "-m 'not live'"
