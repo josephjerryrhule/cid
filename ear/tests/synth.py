@@ -57,8 +57,12 @@ def _add(y, x, t, sr, gain):
         y[i:j] += gain * x[: j - i]
 
 
-def drum_loop(bpm=120.0, bars=16, sr=SR, jitter=0.0, seed=0):
+def drum_loop(bpm=120.0, bars=16, sr=SR, jitter=0.0, seed=0, bar_chords=False):
     """4/4 loop starting at 0.5 s: kick on 1 and 3, snare on 2 and 4, hats on eighths.
+
+    Kicks on 1 and 3 are nearly identical, so drums alone are genuinely ambiguous between
+    2/4 and 4/4. bar_chords=True adds a mid-register chord that changes every bar, which is
+    how real music marks the downbeat. Use it whenever a test checks meter or downbeats.
 
     Returns (signal, truth). truth holds beats, downbeats, kicks, snares, hats (seconds) and duration.
     """
@@ -83,6 +87,12 @@ def drum_loop(bpm=120.0, bars=16, sr=SR, jitter=0.0, seed=0):
         off = b + ibis[i] / 2
         _add(y, h, off, sr, 0.35)
         hats.append(off)
+    if bar_chords:
+        prog = [[60, 64, 67], [57, 60, 64], [65, 69, 72], [67, 71, 74]]
+        for bar in range(bars):
+            t0 = beats[bar * 4]
+            t1 = beats[bar * 4 + 4] if bar * 4 + 4 < len(beats) else t0 + 4 * beat
+            _add(y, 0.35 * chords([prog[bar % 4]], seconds_each=t1 - t0, repeats=1, sr=sr), t0, sr, 1.0)
     y = 0.8 * y / np.max(np.abs(y))
     truth = {
         "beats": beats,
