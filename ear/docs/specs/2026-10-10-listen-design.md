@@ -229,6 +229,7 @@ The free tier has a per-day request limit and a per-minute token limit. The hear
 
 ```json
 {
+  "kind": "",
   "overall": { "genre": "", "mood": "", "instruments": [], "vocals": "", "production_style": "" },
   "sections": [{ "id": "s1", "label": "", "description": "", "what_changes": "" }],
   "extra_moments": [{ "approx_t": 0.0, "what": "" }],
@@ -238,6 +239,7 @@ The free tier has a per-day request limit and a per-minute token limit. The hear
 ```
 
 `speech` is filled only for `speech` or `mixed` inputs.
+`kind` is the model's own call (music, speech, sfx or mixed); a disagreement with the measured kind is listed under Conflicts.
 
 ## 7. Hooks
 
