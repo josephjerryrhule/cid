@@ -93,6 +93,7 @@ listen <file|url|video> [question]
   --ref FILE        run the same measurements on a reference track for comparison
   --no-cloud        never upload audio; measurements and images only
   --stages a,b      rerun only these stages
+  --export DIR      copy cues.json and curves.json into DIR (for example a Remotion public/ folder)
 ```
 
 ### 3.5 Code layout
