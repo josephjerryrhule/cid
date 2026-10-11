@@ -120,3 +120,8 @@ def test_hook_rejects_leaps_over_an_octave():
             notes.append({"t": t, "end": t + 0.2, "pitch": p, "name": "", "velocity": 0.5})
             t += 0.25
     assert melody.find_hook(notes) is None
+
+
+def test_monotone_repetition_is_not_a_hook():
+    notes = [{"t": i * 0.25, "end": i * 0.25 + 0.2, "pitch": 47, "name": "", "velocity": 0.5} for i in range(40)]
+    assert melody.find_hook(notes) is None

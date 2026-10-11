@@ -90,6 +90,8 @@ def find_hook(notes: list[dict], n: int = 4, min_times: int = 3) -> dict | None:
         key = tuple(pitches[i + k + 1] - pitches[i + k] for k in range(n - 1))
         if any(abs(step) > MAX_HOOK_LEAP for step in key):
             continue  # leaps over an octave are overtone artefacts, not a sung or played line
+        if not any(key):
+            continue  # one repeated pitch is a pedal note, not a hook
         if starts[key] and i < starts[key][-1] + n:
             continue
         starts[key].append(i)
