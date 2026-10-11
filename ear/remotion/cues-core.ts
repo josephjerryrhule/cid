@@ -3,6 +3,8 @@
 export type Beat = { t: number; f: number; bar: number; beat: number; strength: number };
 export type Hit = { t: number; f: number; v: number };
 export type Moment = { t: number; f: number; type: string; strength?: number; end?: number; note?: string };
+export type Note = { t: number; f: number; end: number; f1: number; pitch: number; name: string; velocity: number };
+export type Tag = { label: string; group: string; t: number; f: number; end: number; f1: number; confidence: number };
 export type Section = {
   id: string;
   label: string;
@@ -20,6 +22,8 @@ export type Cues = {
   hits: Record<string, Hit[]>;
   sections: Section[];
   moments: Moment[];
+  notes?: Record<string, Note[]>;
+  tags?: Tag[];
 };
 export type Curves = { fps: number; frames: number; curves: Record<string, number[]> };
 
@@ -75,4 +79,14 @@ export function momentAt(frame: number, moments: Moment[], type: string, toleran
 
 export function sectionAt(frame: number, sections: Section[]): Section | null {
   return sections.find((s) => s.f0 <= frame && frame < s.f1) ?? null;
+}
+
+/** The note sounding at this frame (binary search on start frame, then range check). */
+export function noteAt(frame: number, notes: Note[]): Note | null {
+  const i = lastAtOrBefore(notes, frame);
+  return i >= 0 && frame < notes[i].f1 ? notes[i] : null;
+}
+
+export function tagActive(frame: number, tags: Tag[], label: string): Tag | null {
+  return tags.find((s) => s.label === label && s.f <= frame && frame < s.f1) ?? null;
 }

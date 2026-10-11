@@ -47,7 +47,7 @@ The command prints the stage status, the paths, then the full report.
 
 1. Read the printed report.
 2. Read `spec_full.png` (its path is under Images).
-3. Open a `spec_sN.png` only when Conflicts point at it or the question is about that section. Open `stems.png` for arrangement questions and `ref.png` for reference comparisons.
+3. Open a `spec_sN.png` only when Conflicts point at it or the question is about that section. Open `stems.png` for arrangement questions, `ref.png` for reference comparisons, and `notes.png` for melody questions.
 
 ## Step 3: answer
 
@@ -59,6 +59,8 @@ The command prints the stage status, the paths, then the full report.
 ## Motion work
 
 `cues.json` has beats, hits, sections and moments with `t` (seconds) and `f` (frame). `curves.json` has one 0..1 value per frame for `energy`, `loudness`, `bands.low|mid|high` and `stems.vocals|drums|bass|other`. In a Remotion project, copy `${CLAUDE_SKILL_DIR}/remotion/cues.ts` and `cues-core.ts` into the project and use:
+
+`cues.json` also has `notes.{vocals,bass,other}` (every melody note with frames) and `tags` (instruments, voices and SFX with start and end frames); `curves.json` has `tags.<label>`. Use `noteAt(frame, cues.notes.other)` to hit animation on each note and `tagActive(frame, cues.tags, "Electric guitar")` to drive layers by instrument.
 
 ```ts
 const { beats, moments, curve } = useCues(cues, curves);

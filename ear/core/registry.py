@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from core.context import Context
 from core.pipeline import Stage
-from stages import assemble, classify, hear, hits, ingest, mix, moments, rhythm, see, speech, stems, structure
+from stages import assemble, classify, hear, hits, ingest, melody, mix, moments, rhythm, see, speech, stems, structure, tags
 
 
 def _ingest(ctx: Context) -> dict:
@@ -17,6 +17,10 @@ def _playable(ctx: Context) -> bool:
 def _analysable(ctx: Context) -> bool:
     i = _ingest(ctx)
     return not i.get("silent") and not i.get("short")
+
+
+def _has_stems(ctx: Context) -> bool:
+    return ctx.data("stems") is not None
 
 
 def _speech_enabled(ctx: Context) -> bool:
@@ -37,9 +41,11 @@ def build_stages() -> list[Stage]:
     return [
         _stage(ingest, "ingest"),
         _stage(stems, "stems", lambda c: not c.fast and _analysable(c)),
+        _stage(melody, "melody", lambda c: not c.fast and _analysable(c) and _has_stems(c)),
         _stage(rhythm, "rhythm", _analysable),
         _stage(hits, "hits", _analysable),
         _stage(classify, "classify", _playable),
+        _stage(tags, "tags", lambda c: not c.fast and _playable(c)),
         _stage(structure, "structure", _analysable),
         _stage(moments, "moments", _analysable),
         _stage(mix, "mix", _playable),

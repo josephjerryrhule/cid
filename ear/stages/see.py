@@ -13,7 +13,7 @@ from core.context import Context
 from core.timefmt import fmt_time
 
 VERSION = 1
-DEPS = ("ingest", "rhythm", "structure", "stems", "hear", "mix")
+DEPS = ("ingest", "rhythm", "structure", "stems", "melody", "hear", "mix")
 SPEC_SR = 22050
 MAX_SECTION_IMAGES = 8
 MAX_IMAGES = 16
@@ -84,6 +84,27 @@ def _ref(mix: dict, path) -> None:
     plt.close(fig)
 
 
+def _piano_roll(melody: dict, path) -> bool:
+    lanes = [(s, ns) for s, ns in melody.get("notes", {}).items() if ns]
+    if not lanes:
+        return False
+    fig, axes = plt.subplots(len(lanes), 1, figsize=(16, 1.8 * len(lanes)), dpi=100, sharex=True)
+    axes = np.atleast_1d(axes)
+    for ax, (stem, ns) in zip(axes, lanes):
+        for n in ns:
+            ax.add_patch(plt.Rectangle((n["t"], n["pitch"] - 0.4), n["end"] - n["t"], 0.8, color="#e8590c", lw=0))
+        lo, hi = min(n["pitch"] for n in ns), max(n["pitch"] for n in ns)
+        ax.set_ylim(lo - 2, hi + 2)
+        ax.set_ylabel(stem, fontsize=9)
+        ax.xaxis.set_major_formatter(_mmss)
+    axes[-1].set_xlim(0, max(n["end"] for _, ns in lanes for n in ns) + 0.5)
+    axes[0].set_title("notes (MIDI pitch)", fontsize=10)
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+    return True
+
+
 def run(ctx: Context) -> dict:
     import librosa
 
@@ -105,6 +126,9 @@ def run(ctx: Context) -> dict:
             title = f"{s['id']} {labels.get(s['id'], '')}: {fmt_time(s['start'])} to {fmt_time(s['end'])}"
             _spectrogram(y[a:b], s["start"], ctx.path(name), title, [s], labels, downbeats, (12, 4))
             images.append(name)
+    mel = ctx.data("melody")
+    if mel and _piano_roll(mel, ctx.path("notes.png")):
+        images.append("notes.png")
     mix = ctx.data("mix") or {}
     if mix.get("ref", {}).get("bands"):
         _ref(mix, ctx.path("ref.png"))

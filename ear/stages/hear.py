@@ -18,9 +18,9 @@ from core.context import Context
 from core.media import ffmpeg
 from core.pipeline import Fatal, StageUnavailable
 
-VERSION = 1
-DEPS = ("ingest", "rhythm", "structure", "moments", "classify")
-PROMPT_VERSION = 1
+VERSION = 2
+DEPS = ("ingest", "rhythm", "structure", "moments", "classify", "tags")
+PROMPT_VERSION = 2
 CHUNK_S = 600.0
 OVERLAP_S = 15.0
 
@@ -76,6 +76,16 @@ Listen to the whole clip and fill the JSON schema:
 Be concrete and plain. No praise."""
 
 
+def _words(text: str) -> list[str]:
+    return [w for w in "".join(ch.lower() if ch.isalpha() else " " for ch in text).split() if len(w) >= 4]
+
+
+def instrument_conflicts(heard: list[str], tag_labels: list[str]) -> list[str]:
+    tag_words = {w[:5] for label in tag_labels for w in _words(label)}
+    tag_words |= {w.removesuffix("s")[:5] for label in tag_labels for w in _words(label)}
+    return [h for h in heard if _words(h) and not any(w[:5] in tag_words or w.removesuffix("s")[:5] in tag_words for w in _words(h))]
+
+
 def plan_chunks(duration: float, size: float = CHUNK_S, overlap: float = OVERLAP_S) -> list[tuple[float, float]]:
     if duration <= size:
         return [(0.0, float(duration))]
@@ -108,6 +118,16 @@ def build_prompt(data: dict, start: float, end: float) -> str:
     for m in (data.get("moments") or {}).get("moments", []):
         if start <= m["t"] < end and m["type"] != "cut":
             lines.append(f"  {m['t'] - start:.2f} s {m['type']}")
+    spans = (data.get("tags") or {}).get("spans", [])
+    shown = []
+    for s in spans:
+        if s["group"] in ("instrument", "voice") and s["label"] not in [x["label"] for x in shown] and start <= s["t"] < end:
+            shown.append(s)
+        if len(shown) == 8:
+            break
+    if shown:
+        lines.append("instruments measured:")
+        lines += [f"  {s['label']} {s['t'] - start:.1f} to {s['end'] - start:.1f} s" for s in shown]
     if ingest.get("has_video"):
         lines.append("this is the soundtrack of a video")
     return PROMPT.format(skeleton="\n".join(lines))

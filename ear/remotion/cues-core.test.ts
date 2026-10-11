@@ -11,6 +11,10 @@ import {
   type Curves,
   type Moment,
   type Section,
+  noteAt,
+  tagActive,
+  type Note,
+  type Tag,
 } from "./cues-core.ts";
 
 const beats: Beat[] = [
@@ -58,4 +62,21 @@ test("momentAt and sectionAt", () => {
   ];
   assert.equal(sectionAt(929, sections)?.id, "s2");
   assert.equal(sectionAt(5000, sections), null);
+});
+
+test("noteAt returns the sounding note", () => {
+  const notes: Note[] = [
+    { t: 1, f: 60, end: 1.4, f1: 84, pitch: 69, name: "A4", velocity: 0.6 },
+    { t: 2, f: 120, end: 2.4, f1: 144, pitch: 72, name: "C5", velocity: 0.7 },
+  ];
+  assert.equal(noteAt(70, notes)?.name, "A4");
+  assert.equal(noteAt(100, notes), null);
+  assert.equal(noteAt(120, notes)?.name, "C5");
+});
+
+test("tagActive finds a span for a label", () => {
+  const tags: Tag[] = [{ label: "Guitar", group: "instrument", t: 0, f: 0, end: 10, f1: 600, confidence: 0.8 }];
+  assert.equal(tagActive(300, tags, "Guitar")?.label, "Guitar");
+  assert.equal(tagActive(700, tags, "Guitar"), null);
+  assert.equal(tagActive(300, tags, "Speech"), null);
 });

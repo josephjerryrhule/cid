@@ -8,9 +8,10 @@ import numpy as np
 from core.audio import norm01, resample_curve
 from core.context import Context
 from core.timefmt import fmt_time
+from stages.hear import instrument_conflicts
 
 VERSION = 1
-DEPS = ("ingest", "stems", "rhythm", "hits", "classify", "structure", "moments", "mix", "speech", "hear", "see")
+DEPS = ("ingest", "stems", "melody", "rhythm", "hits", "classify", "tags", "structure", "moments", "mix", "speech", "hear", "see")
 STEMS = ("vocals", "drums", "bass", "other")
 SPARK = "▁▂▃▄▅▆▇█"
 MAX_MOMENTS = 12
@@ -59,6 +60,16 @@ def build_cues(d: dict, fps: int) -> dict:
             for s in (d.get("speech") or {}).get("segments", [])
         ],
         "mix": {k: mix.get(k) for k in ("lufs", "true_peak", "lra", "clipped_samples", "flags")} if mix else None,
+        "notes": {
+            stem: [{"t": n["t"], "f": _f(n["t"], fps), "end": n["end"], "f1": _f(n["end"], fps),
+                    "pitch": n["pitch"], "name": n["name"], "velocity": n["velocity"]} for n in ns]
+            for stem, ns in ((d.get("melody") or {}).get("notes") or {}).items() if ns
+        },
+        "tags": [
+            {"label": s["label"], "group": s["group"], "t": s["t"], "f": _f(s["t"], fps), "end": s["end"],
+             "f1": _f(s["end"], fps), "confidence": s["confidence"]}
+            for s in (d.get("tags") or {}).get("spans", [])
+        ],
     }
 
 
@@ -80,6 +91,11 @@ def build_curves(ctx: Context, fps: int, duration: float) -> dict:
         vals = np.array(stv["values"], dtype=float)
         loud = norm01(vals, floor=max(-60.0, float(vals.min())))
         out["loudness"] = resample_curve(loud, stv["hz"], fps, duration, offset=stv["offset"])
+    tg = ctx.data("tags")
+    if tg and ctx.path(tg["curves_file"]).exists():
+        tc = np.load(ctx.path(tg["curves_file"]))
+        for label in tc.files:
+            out[f"tags.{label}"] = resample_curve(tc[label], tg["curve_hz"], fps, duration)
     n = int(round(duration * fps))
     return {"fps": fps, "frames": n,
             "curves": {k: [round(float(x), 3) for x in np.clip(v, 0, 1)] for k, v in out.items()}}
@@ -89,7 +105,7 @@ def _section_at(sections: list[dict], t: float) -> dict | None:
     return next((s for s in sections if s["start"] <= t < s["end"]), None)
 
 
-def find_conflicts(cues: dict, hear: dict, kind: str | None, images: list[str]) -> list[str]:
+def find_conflicts(cues: dict, hear: dict, kind: str | None, images: list[str], tag_labels: list[str] = ()) -> list[str]:
     out = []
     if not hear:
         return out
@@ -106,6 +122,9 @@ def find_conflicts(cues: dict, hear: dict, kind: str | None, images: list[str]) 
     missing = [s["id"] for s in cues["sections"] if s["label_source"] == "auto"]
     if missing:
         out.append(f"hearing model gave no label for {', '.join(missing)}; auto labels used")
+    if hear.get("overall") and tag_labels:
+        for inst in instrument_conflicts(hear["overall"].get("instruments", []), list(tag_labels)):
+            out.append(f"heard {inst}, no matching measured tag")
     return out
 
 
@@ -158,6 +177,33 @@ def render_report(cues, d, curves, conflicts, unavailable, image_paths) -> str:
             desc = heard_desc.get(s["id"]) or (f"measured: {', '.join(inside)}" if inside else "measured: steady")
             lines.append(f"| {s['id']} | {s['label']} | {fmt_time(s['start'])} to {fmt_time(s['end'])} | "
                          f"{_spark(energy, src['fps'], s['start'], s['end'])} | {_clip(desc)} |")
+        lines.append("")
+
+    tg = cues.get("tags") or []
+    if tg:
+        lines.append("## What's playing when (measured)")
+        firsts = {}
+        for s in tg:
+            if s["group"] in ("instrument", "voice"):
+                firsts.setdefault(s["label"], []).append(s)
+        ranked = sorted(firsts.items(), key=lambda kv: -sum(x["end"] - x["t"] for x in kv[1]))[:8]
+        for label, ss in ranked:
+            spans = ", ".join(f"{fmt_time(x['t'])} to {fmt_time(x['end'])}" for x in ss[:3])
+            more = f" (+{len(ss) - 3})" if len(ss) > 3 else ""
+            lines.append(f"- {label} {spans}{more}")
+        sfx = sorted([s for s in tg if s["group"] == "sfx"], key=lambda s: -s["confidence"])[:8]
+        if sfx:
+            lines.append("SFX: " + "; ".join(f"{s['label']} {fmt_time(s['t'], precise=True)}" for s in sorted(sfx, key=lambda s: s["t"])))
+        lines.append("")
+    mel = (d.get("melody") or {}).get("summary") or {}
+    if any(v.get("count") for v in mel.values()):
+        lines.append("## Melody (measured)")
+        for stem, v in mel.items():
+            if not v.get("count"):
+                continue
+            hook = v.get("hook")
+            hk = f"; hook {'-'.join(hook['pattern'])} x{len(hook['times'])} from {fmt_time(hook['times'][0], precise=True)}" if hook else ""
+            lines.append(f"- {stem}: {v['count']} notes, {v['range'][0]} to {v['range'][1]}{hk}")
         lines.append("")
 
     events = [m for m in cues["moments"] if m["type"] not in ("cut", "hold")]
@@ -219,7 +265,8 @@ def run(ctx: Context) -> dict:
     cues = build_cues(d, ctx.fps)
     curves = build_curves(ctx, ctx.fps, duration)
     images = (d.get("see") or {}).get("images", [])
-    conflicts = find_conflicts(cues, d.get("hear") or {}, (d.get("classify") or {}).get("kind"), images)
+    conflicts = find_conflicts(cues, d.get("hear") or {}, (d.get("classify") or {}).get("kind"), images,
+                               [s["label"] for s in (d.get("tags") or {}).get("spans", [])])
     unavailable = {s: ctx.read(s)["_unavailable"] for s in DEPS if ctx.read(s).get("_unavailable")}
     report = render_report(cues, d, curves, conflicts, unavailable, [str(ctx.path(i)) for i in images])
     ctx.path("cues.json").write_text(json.dumps(cues, indent=1))
