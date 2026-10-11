@@ -292,6 +292,7 @@ Tested 2026-10-10. Goal: use a personal Google account instead of an API key for
 
 - **Antigravity (agy):** not usable. Its file viewer turns audio into a text transcript before the model sees it. It returned the spoken words of a test clip but could not hear voice, tone or anything non-verbal, so it cannot describe music. Words are already covered locally by mlx-whisper.
 - **Gemini CLI:** not tested. Sign-in needs an interactive browser flow, and the AI Studio key already works. Skipped by decision.
+- **ChatGPT (app):** tested by Joseph on 2026-10-11; it could not listen to an uploaded audio file.
 
 Result: `aistudio` is the only hearing backend. If the free tier gets tight, enable billing on the same key rather than adding a backend.
 
