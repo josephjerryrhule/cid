@@ -9,12 +9,17 @@ from scipy.ndimage import median_filter
 from core.context import Context
 from core.models import ensure_panns
 
-VERSION = 1
-DEPS = ("ingest",)
+VERSION = 2
+DEPS = ("ingest", "stems")
 SR = 32000
 FRAME_HZ = 100
 CURVES_FILE = "curves_tags.npz"
 THRESH = 0.3
+STEM_THRESH = 0.2  # isolated stems give cleaner, lower-probability instrument tags
+STEM_SOURCES = ("drums", "bass", "other", "vocals")
+MIX_GROUPS = {"sfx", "ambience", "voice"}  # instruments come from stems when stems exist
+STEM_GROUPS = {"instrument", "voice"}
+GENERIC = {"Music", "Musical instrument"}
 MIN_SPAN_S = 0.3
 MAX_LABELS = 40
 CURVE_MIN_S = 2.0
@@ -81,6 +86,26 @@ def framewise(y: np.ndarray, sed, chunk_s: float = 60.0) -> np.ndarray:
     return np.concatenate(parts, axis=0) if parts else np.zeros((0, 527))
 
 
+def merge_sources(found: dict[tuple[str, str], list[tuple[float, float, float]]]) -> dict[str, list[dict]]:
+    """Union each label's spans across sources (mix and stems); keep the best confidence and every source."""
+    by_label: dict[str, list[tuple[float, float, float, str]]] = {}
+    for (label, source), spans in found.items():
+        by_label.setdefault(label, []).extend((a, b, c, source) for a, b, c in spans)
+    merged: dict[str, list[dict]] = {}
+    for label, items in by_label.items():
+        out: list[dict] = []
+        for a, b, c, src in sorted(items):
+            if out and a <= out[-1]["end"] + 0.5:
+                out[-1]["end"] = max(out[-1]["end"], b)
+                out[-1]["confidence"] = max(out[-1]["confidence"], c)
+                if src not in out[-1]["sources"]:
+                    out[-1]["sources"] = sorted(out[-1]["sources"] + [src])
+            else:
+                out.append({"t": a, "end": b, "confidence": c, "sources": [src]})
+        merged[label] = out
+    return merged
+
+
 def run(ctx: Context) -> dict:
     import librosa
 
@@ -88,26 +113,38 @@ def run(ctx: Context) -> dict:
     from panns_inference import SoundEventDetection, labels
 
     sed = SoundEventDetection(checkpoint_path=str(paths["checkpoint"]), device="cpu")
-    y, _ = librosa.load(str(ctx.path("master.wav")), sr=SR, mono=True)
-    fw = framewise(y, sed)
     groups = class_groups(json.loads(paths["ontology"].read_text()), list(labels))
-    found = []
-    for i, label in enumerate(labels):
-        spans = to_spans(fw[:, i], FRAME_HZ)
-        if spans:
-            found.append((sum(b - a for a, b, _ in spans), label, spans, i))
-    found.sort(key=lambda x: -x[0])
-    found = found[:MAX_LABELS]
-    curves = {label: np.clip(fw[:, i], 0, 1).astype(np.float32) for total, label, _, i in found if total >= CURVE_MIN_S}
+    stems = ctx.data("stems")
+    sources = [("mix", ctx.path("master.wav"), THRESH, MIX_GROUPS if stems else MIX_GROUPS | STEM_GROUPS)]
+    if stems:
+        sources += [(s, ctx.path(stems["stems"][s]), STEM_THRESH, STEM_GROUPS) for s in STEM_SOURCES]
+    found: dict[tuple[str, str], list] = {}
+    curves_raw: dict[str, np.ndarray] = {}
+    for source, path, thresh, allowed in sources:
+        y, _ = librosa.load(str(path), sr=SR, mono=True)
+        fw = framewise(y, sed)
+        for i, label in enumerate(labels):
+            if label in GENERIC or groups[label] not in allowed:
+                continue
+            spans = to_spans(fw[:, i], FRAME_HZ, thresh=thresh)
+            if spans:
+                found[(label, source)] = spans
+                c = np.clip(fw[:, i], 0, 1).astype(np.float32)
+                prev = curves_raw.get(label)
+                curves_raw[label] = c if prev is None else np.maximum(prev[: len(c)], c[: len(prev)])
+    merged = merge_sources(found)
+    ranked = sorted(merged, key=lambda lab: -sum(x["end"] - x["t"] for x in merged[lab]))[:MAX_LABELS]
+    curves = {lab: curves_raw[lab] for lab in ranked if sum(x["end"] - x["t"] for x in merged[lab]) >= CURVE_MIN_S}
     np.savez_compressed(ctx.path(CURVES_FILE), **curves)
     spans_out = [
-        {"label": label, "group": groups[label], "t": round(a, 2), "end": round(b, 2), "confidence": round(c, 3)}
-        for _, label, spans, _ in found
-        for a, b, c in spans
+        {"label": lab, "group": groups[lab], "t": round(x["t"], 2), "end": round(x["end"], 2),
+         "confidence": round(x["confidence"], 3), "sources": x["sources"]}
+        for lab in ranked
+        for x in merged[lab]
     ]
     return {
         "spans": sorted(spans_out, key=lambda s: (s["t"], s["label"])),
         "curve_hz": FRAME_HZ,
         "curves_file": CURVES_FILE,
-        "labels": [label for _, label, _, _ in found],
+        "labels": ranked,
     }

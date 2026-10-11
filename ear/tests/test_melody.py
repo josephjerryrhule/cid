@@ -83,3 +83,40 @@ def test_synthetic_melody_recovered(ctx):
         match = [n for n in notes if abs(n["t"] - t) <= 0.05]
         assert match, f"no note near {t}"
         assert any(n["pitch"] == p for n in match), f"pitch {p} at {t}: got {[n['pitch'] for n in match]}"
+
+
+def test_ghost_harmonics_removed():
+    raw = [{"t": 0.0, "end": 1.0, "pitch": 57, "velocity": 0.8},
+           {"t": 0.01, "end": 0.9, "pitch": 69, "velocity": 0.4},   # octave ghost
+           {"t": 0.02, "end": 0.8, "pitch": 76, "velocity": 0.3},   # twelfth ghost
+           {"t": 0.0, "end": 1.0, "pitch": 60, "velocity": 0.7}]    # real chord tone (minor third)
+    pitches = sorted(n["pitch"] for n in melody.clean_notes(raw, "other"))
+    assert pitches == [57, 60]
+
+
+def test_bleed_notes_dropped_where_stem_is_quiet():
+    rms = np.r_[np.full(100, 0.5), np.full(100, 0.001)]  # loud first second, near-silent second
+    raw = [{"t": 0.2, "end": 0.6, "pitch": 60, "velocity": 0.6}, {"t": 1.2, "end": 1.6, "pitch": 62, "velocity": 0.6}]
+    kept = melody.clean_notes(raw, "vocals", rms=rms, rms_hz=100)
+    assert [n["pitch"] for n in kept] == [60]
+
+
+def test_vocal_range_clamped():
+    raw = [{"t": 0.0, "end": 0.5, "pitch": 29, "velocity": 0.6}, {"t": 0.5, "end": 1.0, "pitch": 64, "velocity": 0.6},
+           {"t": 1.0, "end": 1.5, "pitch": 96, "velocity": 0.6}]
+    assert [n["pitch"] for n in melody.clean_notes(raw, "vocals")] == [64]
+
+
+def test_skyline_keeps_top_line():
+    notes = [{"t": 0.0, "end": 0.5, "pitch": 60, "name": "", "velocity": 0.5}, {"t": 0.0, "end": 0.5, "pitch": 67, "name": "", "velocity": 0.5},
+             {"t": 0.5, "end": 1.0, "pitch": 62, "name": "", "velocity": 0.5}]
+    assert [n["pitch"] for n in melody.skyline(notes)] == [67, 62]
+
+
+def test_hook_rejects_leaps_over_an_octave():
+    notes, t = [], 0.0
+    for _ in range(4):
+        for p in (88, 45, 88, 88, 50):     # E6-A2-E6-E6: overtone artefact, not a melody
+            notes.append({"t": t, "end": t + 0.2, "pitch": p, "name": "", "velocity": 0.5})
+            t += 0.25
+    assert melody.find_hook(notes) is None

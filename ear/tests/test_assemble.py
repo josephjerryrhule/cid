@@ -84,6 +84,9 @@ def test_curves_resampled_to_fps(ctx):
 
 def test_run_writes_files_and_report_is_lean(ctx):
     _seed(ctx, n_sections=10, n_moments=60, words=1500)
+    h = ctx.read("hear")
+    h["extra_moments"] = [{"approx_t": 51.0, "what": "second drop"}]  # 3 s from the 48 and 54 s section starts
+    ctx.write("hear", h)
     out = assemble.run(ctx)
     assert set(out["files"]) == {"report.md", "cues.json", "curves.json"}
     report = ctx.path("report.md").read_text()
@@ -100,3 +103,13 @@ def test_report_without_hearing_says_so(ctx):
     _seed(ctx, hear=False)
     assemble.run(ctx)
     assert "not run" in ctx.path("report.md").read_text()
+
+
+def test_section_starts_count_as_measured(ctx):
+    _seed(ctx)
+    h = ctx.read("hear")
+    h["extra_moments"] = [{"approx_t": 40.5, "what": "band stops"}]   # section s3 starts at 40.0
+    ctx.write("hear", h)
+    d = {s: ctx.data(s) for s in assemble.DEPS}
+    cues = assemble.build_cues(d, 60)
+    assert not any("band stops" in c for c in assemble.find_conflicts(cues, d["hear"], "music", ["spec_full.png"]))

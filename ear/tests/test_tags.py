@@ -86,3 +86,18 @@ def test_drum_loop_is_tagged(ctx):
     labels = {s["label"] for s in tags.run(ctx)["spans"]}
     drumish = {"Drum", "Drum kit", "Snare drum", "Bass drum", "Percussion", "Drum machine", "Hi-hat", "Drum roll"}
     assert labels & drumish, labels
+
+
+def test_merge_sources_unions_spans_and_keeps_sources():
+    found = {
+        ("Drum kit", "drums"): [(8.0, 20.0, 0.6)],
+        ("Drum kit", "mix"): [(18.0, 30.0, 0.4)],
+        ("Speech", "vocals"): [(5.8, 6.9, 0.5)],
+    }
+    merged = tags.merge_sources(found)
+    assert merged["Drum kit"] == [{"t": 8.0, "end": 30.0, "confidence": 0.6, "sources": ["drums", "mix"]}]
+    assert merged["Speech"][0]["sources"] == ["vocals"]
+
+
+def test_generic_labels_are_dropped():
+    assert "Music" in tags.GENERIC and "Musical instrument" in tags.GENERIC

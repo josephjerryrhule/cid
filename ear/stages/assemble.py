@@ -109,7 +109,7 @@ def find_conflicts(cues: dict, hear: dict, kind: str | None, images: list[str], 
     out = []
     if not hear:
         return out
-    measured = [m["t"] for m in cues["moments"] if m["type"] != "cut"]
+    measured = [m["t"] for m in cues["moments"] if m["type"] != "cut"] + [sec["start"] for sec in cues["sections"][1:]]
     for em in hear.get("extra_moments", []):
         t = em["approx_t"]
         if not any(abs(t - x) <= 2.0 for x in measured):
