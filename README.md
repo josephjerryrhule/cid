@@ -25,12 +25,23 @@ Build plan: [`ear/docs/plans/2026-10-10-listen.md`](ear/docs/plans/2026-10-10-li
 
 ### Setup (macOS, Apple Silicon)
 
+One command. Paste it into Terminal:
+
 ```bash
-cd ear
-python3 setup.py            # installs ffmpeg, yt-dlp, uv if missing; builds the Python 3.12 env
-# add GEMINI_API_KEY=... to ~/.config/listen/.env (free key: aistudio.google.com/apikey)
-ln -s "$PWD" ~/.claude/skills/listen
+curl -fsSL https://raw.githubusercontent.com/josephjerryrhule/cid/master/install.sh | bash
 ```
+
+It installs what is missing (Homebrew, ffmpeg, yt-dlp, uv), builds the Python environment, links the
+skill into Claude Code as `/listen`, asks once for a free Gemini key (press Enter to skip), and downloads
+the models (about 3 GB, once) so the first run is fast. It is safe to run again; that is also how you update.
+
+Then, in Claude Code: `/listen <audio, video or URL>`.
+
+Already cloned? Run `./install.sh` from the repo. Flags: `--no-models` (download on first use instead),
+`--yes` (no prompts), `--dir PATH` (where to clone; default `~/.local/share/cid`).
+
+The Gemini key is optional. Without it everything is measured locally; add `--no-cloud` or put
+`GEMINI_API_KEY=...` in `~/.config/listen/.env` later (free key: aistudio.google.com/apikey).
 
 ### Use
 

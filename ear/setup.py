@@ -105,6 +105,17 @@ def prefetch() -> None:
     subprocess.run([*py, "import mlx_whisper, numpy as np; mlx_whisper.transcribe(np.zeros(16000, dtype=np.float32), "
                          "path_or_hf_repo='mlx-community/whisper-large-v3-turbo')"], check=False)
     subprocess.run([*py, "from core.models import ensure_panns; print(ensure_panns())"], check=False, cwd=str(HERE))
+    # demucs and basic-pitch live in their own uvx environments: build them and fetch the
+    # htdemucs weights now, on two seconds of silence, instead of on the first real track
+    subprocess.run([*py, "import subprocess, tempfile, pathlib\n"
+                         "from stages.stems import DEMUCS_CMD\n"
+                         "from stages.melody import BASIC_PITCH_CMD\n"
+                         "d = pathlib.Path(tempfile.mkdtemp())\n"
+                         "w = d / 'silence.wav'\n"
+                         "subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-t', '2', str(w)], check=True)\n"
+                         "subprocess.run([*DEMUCS_CMD, '-n', 'htdemucs', '-o', str(d), str(w)], check=False)\n"
+                         "subprocess.run([*BASIC_PITCH_CMD, '-c', 'import basic_pitch'], check=False)"],
+                   check=False, cwd=str(HERE))
 
 
 def main() -> None:
