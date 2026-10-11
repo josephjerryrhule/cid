@@ -340,4 +340,5 @@ Closes two gaps found in use: /listen could not give the notes of a melody, and 
 ### 13.4 Acceptance
 
 - Melody: a synthetic melody with known MIDI notes is recovered with exact pitches and onsets within 50 ms.
-- Tags: a spoken phrase is tagged Speech for most of its length; a drum loop gets a drum or percussion label; on kulakovka a guitar label is active during the guitar and the full suite stays green.
+- Tags: a spoken phrase is tagged Speech for most of its length; a drum loop gets a drum or percussion label; the full suite stays green.
+- Known risk, measured before building (2026-10-11): on the first 20 s of kulakovka PANNs hears the scratch (0.26) but calls the clean guitar riff Organ (0.37) and Telephone bell (0.23), with no Guitar. Real-track tag quality is recorded, not assumed; Gemini's named instruments are cross-checked against tags and disagreements surface as Conflicts.
