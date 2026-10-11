@@ -343,3 +343,19 @@ Closes two gaps found in use: /listen could not give the notes of a melody, and 
 - Melody: a synthetic melody with known MIDI notes is recovered with exact pitches and onsets within 50 ms.
 - Tags: a spoken phrase is tagged Speech for most of its length; a drum loop gets a drum or percussion label; the full suite stays green.
 - Known risk, measured before building (2026-10-11): on the first 20 s of kulakovka PANNs hears the scratch (0.26) but calls the clean guitar riff Organ (0.37) and Telephone bell (0.23), with no Guitar. Real-track tag quality is recorded, not assumed; Gemini's named instruments are cross-checked against tags and disagreements surface as Conflicts.
+
+### 13.5 Results (2026-10-11)
+
+Run on three real tracks: kulakovka (funk breakbeat), techsgiving 176432 (Afro house), Your Heart Is a Muscle (pop, golden set).
+
+**Tags.** Tagging the mix alone found almost nothing on produced music (one Organ blip on kulakovka). Tagging each stem fixed most of it: instruments and voices come from the stems (threshold 0.2), SFX and ambience from the mix (0.3), merged per label.
+- kulakovka: drums from 0:08.0 exactly (the drop), snare, bass drum, rimshot, guitar; gaps at 0:21 to 0:23 and 0:38 to 0:40 match the break bars. The clean guitar is still called Organ. Unmatched Gemini instruments fell from 5 to 1.
+- Pop: Singing and Speech on the vocal, piano and electric piano in the intro, guitar. Female vocal sometimes labelled "Child singing".
+- Afro house: vocal chants tagged Speech at the measured vocal entries; drums, shaker and synth pad not tagged at all. PANNs is weak on electronic and Afro percussion; Gemini's instruments surface as Conflicts there.
+
+**Melody.**
+- Bass: reliable. Clear repeating lines and plausible hooks on all three tracks (kulakovka A2-A1-A2-D2 x10 from the drop).
+- Vocals: reliable on sung vocals (pop: 589 notes, D#3 to A5, hook x17). On instrumental tracks, bleed is removed by the stem-level gate (kulakovka 95 to 10 notes, the vocal chop).
+- Other (polyphonic): dense and overtone-heavy; usable for register and section changes, and hooks only after top-line selection and rejecting octave-plus leaps and one-note pedals.
+
+Fixes made during acceptance: per-stem tagging, ghost-harmonic and bleed note removal, vocal range clamp, top-line hooks, hook plausibility rules (no leap over an octave, not a single repeated pitch), a crash on empty hook candidates, and section starts counting as measured when checking hearing-model moments.

@@ -12,6 +12,8 @@ Claude can see video through `/watch`. `ear/` gives it an ear.
 - measures beats, downbeats, tempo, key, sections, drops, risers, silences, cut points and per-instrument hits
 - separates stems (demucs) and transcribes speech locally (mlx-whisper)
 - measures loudness, true peak, dynamics, spectral balance and stereo image, optionally against a reference track
+- transcribes melody to notes per stem (basic-pitch): bass lines, sung vocals, and the hook
+- tags what is playing when, per stem and in the mix (PANNs, AudioSet classes): instruments, voices, SFX
 - renders spectrograms and stem lanes that Claude reads as images
 - asks a hearing model (Gemini) to describe the sound, once per track, with the measured facts as a skeleton
 - writes `cues.json` and `curves.json` with frame numbers, plus a Remotion helper, so animation lands on the beat
