@@ -294,3 +294,19 @@ Tested 2026-10-10. Goal: use a personal Google account instead of an API key for
 - **Gemini CLI:** not tested. Sign-in needs an interactive browser flow, and the AI Studio key already works. Skipped by decision.
 
 Result: `aistudio` is the only hearing backend. If the free tier gets tight, enable billing on the same key rather than adding a backend.
+
+## 12. Measured accuracy (2026-10-11)
+
+Ground truth: five songs from the Harmonix Set (human-annotated beats, downbeats and sections; pop, dance, country, hip-hop, rock). YouTube audio was aligned to the annotations without using /listen: whole-beat phase from harmonic change at annotated downbeats, then a fine shift maximising a narrow (n_fft 256) onset envelope at the annotated beats. A first alignment with a wide onset window was off by 15 to 33 ms and, on two songs, by one and two whole beats; it was replaced.
+
+| Measure | Result | Spec target |
+|---|---|---|
+| Tempo | all 5 within 0.6 BPM | met |
+| Beat timing vs human beats, p90 | 8.2, 11.8, 14.9, 18.6, 19.6 ms (median offset +1 to +8 ms) | 1 frame at 60 fps (16.7 ms): met on 3 of 5 |
+| Downbeat labelling (which beat is "1") | 91 to 100% on 3 songs, 1 and 13% on 2 | open gap |
+| Section boundaries, F at plus or minus 2 s | mean 0.38 (recall 48%, precision 36%); was 0.27 with fixed-count clustering | no target set; tends to over-split |
+| Section boundaries, held-out house track (kulakovka) | all 5 visible changes found, 2 extra; was 2 of 5 | |
+
+Known gaps: downbeat phase on some pop songs (the beat tracker picks the wrong beat as "1"), and over-segmentation of verse/chorus pop. Golden tests in `tests/test_golden.py` hold these numbers as regression floors.
+
+Not usable as ground truth (tested): a hearing model asked cold for section times (invented boundaries past the end of a track on a 16 s template), and projects' earlier scripted analyses (equal-thirds sections, conga pulse mistaken for tempo).
