@@ -554,6 +554,7 @@ dependencies = [
     { name = "matplotlib" },
     { name = "mlx-whisper" },
     { name = "numpy" },
+    { name = "panns-inference" },
     { name = "pydantic" },
     { name = "pyloudnorm" },
     { name = "rotary-embedding-torch" },
@@ -562,6 +563,7 @@ dependencies = [
     { name = "soxr" },
     { name = "torch" },
     { name = "torchaudio" },
+    { name = "torchlibrosa" },
 ]
 
 [package.dev-dependencies]
@@ -578,6 +580,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.9" },
     { name = "mlx-whisper", specifier = ">=0.4" },
     { name = "numpy", specifier = ">=1.26,<2.3" },
+    { name = "panns-inference", specifier = "==0.1.1" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pyloudnorm", specifier = "==0.1.1" },
     { name = "rotary-embedding-torch", specifier = ">=0.6" },
@@ -586,6 +589,7 @@ requires-dist = [
     { name = "soxr", specifier = ">=0.3" },
     { name = "torch", specifier = "==2.5.1" },
     { name = "torchaudio", specifier = "==2.5.1" },
+    { name = "torchlibrosa", specifier = ">=0.1" },
 ]
 
 [package.metadata.requires-dev]
@@ -906,6 +910,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79", size = 313412, upload-time = "2026-08-04T18:15:28.737Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c", size = 129956, upload-time = "2026-08-04T18:15:27.159Z" },
+]
+
+[[package]]
+name = "panns-inference"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "librosa" },
+    { name = "matplotlib" },
+    { name = "torchlibrosa" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/42/aa/308a94956501bf8a9a3d389e2c0e5cb405acc81780f7c16ba3898ae08fc3/panns-inference-0.1.1.tar.gz", hash = "sha256:f8074268513571775e154294729b66fc0ccbdbeceb5c8f6eaa9670664e40c03d", size = 6340, upload-time = "2023-03-26T15:37:18.254Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ad/ac/0558484d9b5383125912b1cedeb95b1f7e928c2b0781f52d77b068f0ba3d/panns_inference-0.1.1-py3-none-any.whl", hash = "sha256:97f6b56b6c9467cf00e21f041e1f88933188c65c1b5ca64eeb3c92e37fb27fc2", size = 8267, upload-time = "2023-03-26T15:37:16.277Z" },
 ]
 
 [[package]]
@@ -1362,6 +1380,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/34/1c/345d11bf492a1414dced70a9572ff1eb2c73013578d24fb4d728a91a09d1/torchaudio-2.5.1-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:9c8fb06fbd8d2016e7b7caf15a3231867c792a2e3b0f2f8f9013633e9c2ce412", size = 3371851, upload-time = "2024-10-29T17:41:24.739Z" },
     { url = "https://files.pythonhosted.org/packages/1c/74/a27c6d0d4c4fad90462f08e99222d3557f118beb8fb560b87d607a727a0a/torchaudio-2.5.1-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:6bb65416405f40e00b20701257c16e7493bfdd7188e02e87cc5b389c31c10c2c", size = 1668849, upload-time = "2024-10-29T17:41:30.51Z" },
     { url = "https://files.pythonhosted.org/packages/99/a1/4220b73ba6e083229099892d9126e01836afe96cf7e2fbfe60b327506f49/torchaudio-2.5.1-cp312-cp312-win_amd64.whl", hash = "sha256:ec8f12d6be12aed248a0d65a76c7bb341ee5eef969fe2e9dc3154c7cfba1bdf4", size = 2435747, upload-time = "2024-10-29T17:41:39.561Z" },
+]
+
+[[package]]
+name = "torchlibrosa"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "librosa" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a4/67/e4c79da3f15777b9bc2b655d47dac553fc31e40360500fef5e66d6877ce8/torchlibrosa-0.1.0.tar.gz", hash = "sha256:62a8beedf9c9b4141a06234df3f10229f7ba86e67678ccee02489ec4ef044028", size = 11719, upload-time = "2023-02-21T09:40:54.968Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3e/af/ccf007edf442c3c0cd3a98be2c82bc99edc957c04436a759b6e1e01077e0/torchlibrosa-0.1.0-py3-none-any.whl", hash = "sha256:89b65fd28b833ceb6bc74a3d0d87e2924ddc5a845d0a246b194952a4e12a38cb", size = 11741, upload-time = "2023-02-21T09:40:52.58Z" },
 ]
 
 [[package]]

@@ -104,6 +104,7 @@ def prefetch() -> None:
     subprocess.run([*py, "from beat_this.inference import File2Beats; File2Beats(checkpoint_path='final0', device='cpu')"], check=False)
     subprocess.run([*py, "import mlx_whisper, numpy as np; mlx_whisper.transcribe(np.zeros(16000, dtype=np.float32), "
                          "path_or_hf_repo='mlx-community/whisper-large-v3-turbo')"], check=False)
+    subprocess.run([*py, "from core.models import ensure_panns; print(ensure_panns())"], check=False, cwd=str(HERE))
 
 
 def main() -> None:
