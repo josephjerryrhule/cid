@@ -8,3 +8,4 @@ remotion/demo/node_modules/
 remotion/demo/out/
 remotion/demo/public/
 remotion/demo/src/lib/
+.DS_Store

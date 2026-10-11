@@ -189,3 +189,21 @@ def syllables(seconds=8.0, rate_hz=4.0, sr=SR, seed=7):
     am = np.clip(np.sin(2 * np.pi * rate_hz * t), 0, None) ** 2
     y = voiced * am
     return (0.6 * y / np.max(np.abs(y))).astype(np.float32)
+
+
+def melody(pitches, note_s=0.4, gap_s=0.1, sr=SR, start=0.5):
+    """Harmonic tones with short attack and release. Returns (signal, [(t, end, midi)])."""
+    n_total = int((start + len(pitches) * (note_s + gap_s) + 0.5) * sr)
+    y = np.zeros(n_total)
+    truth = []
+    t = start
+    n = int(note_s * sr)
+    tt = np.arange(n) / sr
+    env = np.minimum(1, np.minimum(tt / 0.01, (note_s - tt) / 0.03))
+    for p in pitches:
+        f = midi_hz(p)
+        tone = sum(np.sin(2 * np.pi * f * h * tt) / h for h in (1, 2, 3, 4))
+        _add(y, tone * env, t, sr, 1.0)
+        truth.append((t, t + note_s, p))
+        t += note_s + gap_s
+    return (0.6 * y / np.max(np.abs(y))).astype(np.float32), truth
