@@ -6,10 +6,12 @@ import numpy as np
 from core.audio import ANALYSIS_SR, CURVE_HOP, CURVE_HZ, load_mono, norm01
 from core.context import Context
 
-VERSION = 1
+VERSION = 2
 DEPS = ("ingest", "rhythm", "stems", "classify")
 CURVES_FILE = "curves_structure.npz"
-SECTION_TARGET_S = 20
+NOVELTY_HALF_BEATS = 12  # checkerboard half-width: about 3 bars of 4/4
+NOVELTY_PROMINENCE = 0.10
+MIN_GAP_BEATS = 8
 MIN_SECTION_S = 4.0
 BANDS = {"low": (20, 250), "mid": (250, 4000), "high": (4000, 12000)}
 
@@ -49,24 +51,57 @@ def _merge_short(starts: list[float], duration: float) -> list[float]:
     return out
 
 
-def find_sections(y, sr, downbeats, duration: float, k: int | None = None) -> list[tuple[float, float]]:
+def _novelty(S: np.ndarray, half: int) -> np.ndarray:
+    """Foote checkerboard novelty along the diagonal of a self-similarity matrix."""
+    g = np.exp(-0.5 * np.linspace(-2, 2, 2 * half) ** 2)
+    kernel = np.outer(g, g) * np.kron([[1, -1], [-1, 1]], np.ones((half, half)))
+    padded = np.pad(S, half, mode="edge")
+    return np.array([np.sum(padded[i : i + 2 * half, i : i + 2 * half] * kernel) for i in range(S.shape[0])])
+
+
+def _unit(v: np.ndarray) -> np.ndarray:
+    return (v - v.min()) / (np.ptp(v) + 1e-9)
+
+
+def find_sections(y, sr, beats, downbeats, duration: float) -> list[tuple[float, float]]:
+    """Section boundaries where the music stops resembling itself.
+
+    Beat-synchronous chroma and MFCC self-similarity (checkerboard novelty, about 3 bars wide)
+    plus loudness change; peaks become boundaries, snapped to the nearest downbeat. The number
+    of sections comes from the music. Validated against human annotations (Harmonix Set).
+    """
     import librosa
+    from scipy.ndimage import gaussian_filter1d
+    from scipy.signal import find_peaks
 
     hop = 512
+    grid = np.asarray(beats, dtype=float)
+    if len(grid) < 4 * NOVELTY_HALF_BEATS:
+        grid = np.arange(0.5, duration, 0.5)  # no usable beats: half-second pseudo-beats
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr, hop_length=hop)
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, hop_length=hop)
+    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, hop_length=hop)[1:]
     rms = librosa.feature.rms(y=y, hop_length=hop)
     n = min(chroma.shape[1], mfcc.shape[1], rms.shape[1])
-    feat = np.vstack([_z(chroma[:, :n]), _z(mfcc[:, :n]), 2 * _z(rms[:, :n])])
-    grid = np.asarray(downbeats, dtype=float) if len(downbeats) >= 4 else np.arange(1.0, duration, 1.0)
     frames = librosa.time_to_frames(grid, sr=sr, hop_length=hop)
     bounds = librosa.util.fix_frames(frames[frames < n], x_min=0, x_max=n, pad=True)
-    synced = librosa.util.sync(feat, bounds, aggregate=np.median, pad=False)
-    seg_starts = librosa.frames_to_time(bounds[:-1], sr=sr, hop_length=hop)
-    k = k or int(np.clip(round(duration / SECTION_TARGET_S), 2, 10))
-    k = max(1, min(k, synced.shape[1]))
-    idx = librosa.segment.agglomerative(synced, k)
-    starts = _merge_short(sorted({round(float(seg_starts[i]), 3) for i in idx} | {0.0}), duration)
+    seg_times = librosa.frames_to_time(bounds[:-1], sr=sr, hop_length=hop)
+    if len(seg_times) < 4 * NOVELTY_HALF_BEATS:
+        return [(0.0, round(float(duration), 3))]
+    nov = np.zeros(len(seg_times))
+    for feat, agg in ((chroma[:, :n], np.median), (_z(mfcc[:, :n]), np.mean)):
+        X = librosa.util.sync(feat, bounds, aggregate=agg, pad=False)
+        X = X / (np.linalg.norm(X, axis=0, keepdims=True) + 1e-9)
+        S = librosa.segment.path_enhance(X.T @ X, 9)
+        nov += _unit(_novelty(S, NOVELTY_HALF_BEATS))
+    loud = librosa.util.sync(_z(np.log(rms[:, :n] + 1e-6)), bounds, aggregate=np.mean, pad=False)[0]
+    step = np.convolve(np.diff(loud, prepend=loud[0]), np.r_[np.ones(NOVELTY_HALF_BEATS), -np.ones(NOVELTY_HALF_BEATS)] / NOVELTY_HALF_BEATS, mode="same")
+    nov = gaussian_filter1d(nov + _unit(np.abs(step)), 1)
+    peaks, _ = find_peaks(nov, prominence=NOVELTY_PROMINENCE * np.ptp(nov), distance=MIN_GAP_BEATS)
+    est = seg_times[peaks]
+    db = np.asarray(downbeats, dtype=float)
+    if len(db) >= 4:
+        est = np.array([db[np.argmin(np.abs(db - e))] for e in est])
+    starts = _merge_short(sorted({round(float(e), 3) for e in est if e > 0} | {0.0}), duration)
     ends = starts[1:] + [round(float(duration), 3)]
     return list(zip(starts, ends))
 
@@ -122,7 +157,8 @@ def run(ctx: Context) -> dict:
             r = librosa.feature.rms(y=ys, frame_length=2 * CURVE_HOP, hop_length=CURVE_HOP)[0]
             curves[f"stem_{name}"] = _fit(norm01(r, floor=0.0), n)
     np.savez_compressed(ctx.path(CURVES_FILE), **curves)
-    spans = find_sections(y, ANALYSIS_SR, rhythm.get("downbeats", []), duration)
+    beat_times = [b["t"] for b in rhythm.get("beats", [])]
+    spans = find_sections(y, ANALYSIS_SR, beat_times, rhythm.get("downbeats", []), duration)
     energies = []
     for a, b in spans:
         i, j = int(a * CURVE_HZ), max(int(a * CURVE_HZ) + 1, int(b * CURVE_HZ))
