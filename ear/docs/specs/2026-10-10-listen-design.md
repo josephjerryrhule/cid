@@ -310,3 +310,34 @@ Ground truth: five songs from the Harmonix Set (human-annotated beats, downbeats
 Known gaps: downbeat phase on some pop songs (the beat tracker picks the wrong beat as "1"), and over-segmentation of verse/chorus pop. Golden tests in `tests/test_golden.py` hold these numbers as regression floors.
 
 Not usable as ground truth (tested): a hearing model asked cold for section times (invented boundaries past the end of a track on a 16 s template), and projects' earlier scripted analyses (equal-thirds sections, conga pulse mistaken for tempo).
+
+## 13. Phase 2: melody and "what's playing when" (approved 2026-10-11)
+
+Closes two gaps found in use: /listen could not give the notes of a melody, and could only time instruments as four stem groups.
+
+### 13.1 Stage `melody` (notes)
+
+- Spotify basic-pitch (Apache 2.0) on the vocals, bass and other stems; never drums. Runs in its own uvx environment (`basic-pitch[onnx]==0.3.0`, Python 3.12) like demucs, through `tools/basic_pitch_runner.py`.
+- Silent stems are skipped. Notes shorter than 60 ms are dropped. Bass keeps notes at or below C4.
+- Output per stem: notes with `t`, `end`, MIDI `pitch`, `name` (e.g. "A4"), `velocity` 0 to 1; a summary with count, pitch range and the hook (most repeated 4-note interval pattern, at least 3 times, with its start times).
+
+### 13.2 Stage `tags` (what is playing when)
+
+- PANNs Cnn14_DecisionLevelMax (AudioSet, 527 classes, framewise at 100 Hz) on the full mix at 32 kHz, in 60 s chunks.
+- Model files (checkpoint, class list, AudioSet ontology) download once into `~/panns_data` with Python's urllib (no wget dependency).
+- A class becomes a span when its median-smoothed (0.3 s) probability exceeds 0.3 for at least 0.3 s; gaps under 0.5 s merge. Each span carries `group` from the AudioSet ontology: instrument, voice, sfx, ambience, genre, music.
+- At most 40 labels, ranked by total active time. Labels active 2 s or more get a 0 to 1 curve.
+
+### 13.3 Wiring
+
+- `cues.json`: `notes.{vocals,bass,other}` (each note with `t`, `f`, `end`, `f1`, `pitch`, `name`, `velocity`) and `tags` (each span with `label`, `group`, `t`, `f`, `end`, `f1`, `confidence`). `curves.json`: `tags.<label>`.
+- `report.md`: "What's playing when (measured)" and "Melody (measured)", within the 2,000-token budget.
+- `see`: `notes.png`, a piano roll per stem.
+- `hear`: measured instrument spans join the skeleton; any instrument Gemini names that matches no tag is listed under Conflicts. Prompt version 2 (one new request per already-heard track).
+- Remotion helper: `noteAt(frame, notes)` and `tagActive(frame, tags, label)`.
+- Both stages are skipped with `--fast`. Nothing new is uploaded.
+
+### 13.4 Acceptance
+
+- Melody: a synthetic melody with known MIDI notes is recovered with exact pitches and onsets within 50 ms.
+- Tags: a spoken phrase is tagged Speech for most of its length; a drum loop gets a drum or percussion label; on kulakovka a guitar label is active during the guitar and the full suite stays green.
